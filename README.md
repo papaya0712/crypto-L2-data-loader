@@ -10,8 +10,7 @@ This project provides a high-performance, asynchronous data pipeline for real-ti
 - Efficient WebSocket connections using [tokio](https://github.com/tokio-rs/tokio)
 - Subscription to multiple L2 data feeds
 - Real-time parsing and processing of order book updates
-- Optional persistent storage (e.g., local file, database) – *[placeholder]*
-- Exchange-agnostic design – easily extendable for multiple APIs
+- Optional persistent storage
 - Unit-tested components for stability
 
 ---

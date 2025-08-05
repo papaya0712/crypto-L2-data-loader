@@ -1,0 +1,4 @@
+symbols = ["BTCUSDT"]
+exchange = "binance"
+output_dir = ""
+flush_interval_seconds = 86400
