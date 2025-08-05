@@ -15,15 +15,8 @@ This project provides a high-performance, asynchronous data pipeline for real-ti
 - Unit-tested components for stability
 
 ---
+
 ## Installation
-
-### Prerequisites
-
-- [Rust (stable)](https://www.rust-lang.org/tools/install)
-- Cargo (included with Rust)
-- Optionally: `sqlite3`, `docker`, etc. depending on storage backend
-
-### Clone and build
 
 ```bash
 git clone https://github.com/papaya0712/rust_l2_fetcher.git
