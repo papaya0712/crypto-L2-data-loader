@@ -4,6 +4,7 @@ A Rust repository for automatic and efficient L2 crypto market data streaming, p
 
 This project provides a high-performance, asynchronous data pipeline for real-time **Level 2 (order book)** data from various cryptocurrency exchanges. It connects to WebSocket APIs, processes incoming data, and stores it for downstream analysis or archival.
 
+---
 ## 🚀 Features
 
 - ⚡ Efficient WebSocket connections using `tokio`
@@ -13,15 +14,8 @@ This project provides a high-performance, asynchronous data pipeline for real-ti
 - 🔧 Exchange-agnostic design – easily extendable for multiple APIs
 - 🧪 Unit-tested components for stability
 
-## 📦 Planned (TODO)
-
-- [ ] Add support for multiple exchanges (e.g., Binance, Kraken, Coinbase)
-- [ ] Implement pluggable storage backends (SQLite, Parquet, etc.)
-- [ ] Add data aggregation or analytics modules
-- [ ] CLI interface for easy control & monitoring
-- [ ] Docker support
-
-## 🛠️ Installation
+---
+## Installation
 
 ### Prerequisites
 
