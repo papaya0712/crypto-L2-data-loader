@@ -1,0 +1,1 @@
+# A Rust reposity for automatic and efficent L2-crypto-data streaming and saving.
