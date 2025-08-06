@@ -19,7 +19,7 @@ pub async fn connect_ws(config: &WebSocketConfig) {
 
     let subscribe_msg = json!({
         "op": "subscribe",
-        "args": ["orderbook.200.BTCUSDT"]
+        "args": ["orderbook.50.BTCUSDT"]
     });
 
     write
@@ -43,7 +43,7 @@ pub async fn connect_ws(config: &WebSocketConfig) {
             }
             Some(msg) = read.next() => {
                 match msg {
-                    Ok(Message::Text(text)) => println!("📥 {text}"),
+                    Ok(Message::Text(text)) => println!("{text}"),
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("Error: {e}");
