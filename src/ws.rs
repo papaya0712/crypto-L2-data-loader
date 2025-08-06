@@ -35,7 +35,7 @@ pub async fn connect_ws(config: &WebSocketConfig) {
         select! {
             _ = ping_interval.tick() => {
                 if let Err(e) = send_ping(&mut write).await {
-                    eprintln!("⚠️ Ping failed: {e}");
+                    eprintln!("Ping failed: {e}");
                     break;
                 } else {
                     println!("Ping sent");
@@ -46,7 +46,7 @@ pub async fn connect_ws(config: &WebSocketConfig) {
                     Ok(Message::Text(text)) => println!("📥 {text}"),
                     Ok(_) => {}
                     Err(e) => {
-                        eprintln!("⚠️ Error: {e}");
+                        eprintln!("Error: {e}");
                         break;
                     }
                 }
