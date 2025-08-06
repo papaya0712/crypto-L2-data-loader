@@ -1,4 +1,14 @@
+
+[exchange]
 symbols = ["BTCUSDT"]
-exchange = "binance"
-output_dir = ""
-flush_interval_seconds = 86400
+
+[websocket]
+url = "wss://stream.bybit.com/v5/public/linear"
+ping_interval_secs = 30
+
+[logging]
+level = "info"
+save_logs = true
+log_file_path = "logs/app.log"
+rewrite_last_logs = true
+
