@@ -1,23 +1,3 @@
 # A Rust repository for automatic and efficient L2 crypto market data streaming, processing, and storage.
 
-## 🧩 Description
-
-This project provides a high-performance, asynchronous data pipeline for real-time **Level 2 (order book)** data from various cryptocurrency exchanges. It connects to WebSocket APIs, processes incoming data, and stores it for downstream analysis or archival.
-
----
-## 🚀 Features
-
-- Efficient WebSocket connections using [tokio](https://github.com/tokio-rs/tokio)
-- Subscription to multiple L2 data feeds
-- Real-time parsing and processing of order book updates
-- Optional persistent storage
-- Unit-tested components for stability
-
----
-
-## Installation
-
-```bash
-git clone https://github.com/papaya0712/rust_l2_fetcher.git
-cd rust_l2_fetcher
-cargo build --release
+### currently in development 
