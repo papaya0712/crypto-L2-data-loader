@@ -1,3 +1,4 @@
+// logging.rs
 use crate::config::LoggingConfig;
 use std::fs::{create_dir_all, File};
 use std::io::BufWriter;
@@ -43,3 +44,4 @@ pub fn setup_logging(cfg: &LoggingConfig) {
             .init();
     }
 }
+
