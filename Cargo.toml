@@ -17,3 +17,5 @@ tokio-util = "0.7"
 bytes = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+anyhow = "1.0"
