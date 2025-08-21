@@ -17,13 +17,10 @@ async fn main() {
     info!("Logger initialized successfully");
     info!("Config loaded: {:?}", config);
 
-    // zentralen Buffer erstellen
     let (tx, rx) = create_buffer(10_000);
 
-    // Writer Task starten (persistiert alles als JSONL)
     tokio::spawn(writer_task(rx, "bybit"));
 
-    // REST: FundingRate holen und in Buffer pushen
     let rest_client = rest::RestClient::new("https://api.bybit.com");
     match rest_client.funding_rate("BTCUSDT").await {
         Ok(entry) => {

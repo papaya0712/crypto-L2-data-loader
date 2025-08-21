@@ -44,13 +44,12 @@ struct TradeData {
     #[serde(default)] S: Option<String>, // side ("Buy"/"Sell")
 }
 
-/// Connect entry: nimmt jetzt den EventSender entgegen
 pub async fn connect_ws(config: &WebSocketConfig, tx: EventSender) {
     let tx = Arc::new(tx);
     let mut attempt: u32 = 0;
     loop {
         match run_session(config, tx.clone()).await {
-            Ok(_) => break, // normaler Exit (CTRL-C)
+            Ok(_) => break, 
             Err(e) => {
                 eprintln!("WS session ended with error: {e}");
                 attempt = attempt.saturating_add(1);
@@ -130,11 +129,10 @@ async fn send_ping(
 }
 
 fn handle_text(text: &str, last_seq: &mut Option<i64>, tx: &EventSender) {
-    // Versuche, das Envelope zu parsen
     let env = match serde_json::from_str::<WsEnvelope>(text) {
         Ok(v) => v,
         Err(_) => {
-            // Nicht-JSON oder unbekanntes Format — minimal loggen und return
+            
             println!("{text}");
             return;
         }
@@ -171,10 +169,8 @@ fn handle_text(text: &str, last_seq: &mut Option<i64>, tx: &EventSender) {
                                     (price, size)
                                 }).collect::<Vec<_>>();
 
-                                // LOG vor dem Move, damit ob.s noch verfügbar ist
                                 println!("OB snapshot {} seq={:?}", ob.s, ob.seq);
 
-                                // symbol wird hier bewegt (ob.s)
                                 if let Err(e) = tx.try_send(MarketEvent::OrderBookSnapshot {
                                     symbol: ob.s,
                                     bids,
@@ -206,7 +202,6 @@ fn handle_text(text: &str, last_seq: &mut Option<i64>, tx: &EventSender) {
                                             (price, size)
                                         }).collect::<Vec<_>>();
 
-                                        // Clone symbol hier, um keine Ownership-Probleme zu riskieren
                                         let symbol = ob.s.clone();
                                         if let Err(e) = tx.try_send(MarketEvent::OrderBookDelta {
                                             symbol,
@@ -233,14 +228,14 @@ fn handle_text(text: &str, last_seq: &mut Option<i64>, tx: &EventSender) {
 
         t if t.starts_with("publicTrade.") => {
             if let Some(data) = &env.data {
-                // Bybit sendet oft ein Array von Trades
+                
                 if let Ok(trades) = serde_json::from_value::<Vec<TradeData>>(data.clone()) {
                     for tr in trades {
                         let price = tr.p.unwrap_or_else(|| "0".into()).parse::<f64>().unwrap_or(0.0);
                         let size  = tr.v.unwrap_or_else(|| "0".into()).parse::<f64>().unwrap_or(0.0);
                         let side  = tr.S.unwrap_or_default();
                         let ts    = tr.T.unwrap_or(0);
-                        let symbol = tr.s.clone(); // clone, weil tr in den folgenden Aufruf gezogen wird
+                        let symbol = tr.s.clone(); 
 
                         if let Err(e) = tx.try_send(MarketEvent::Trade {
                             symbol,
