@@ -1,3 +1,4 @@
+// main.rs
 mod config;
 mod ws;
 mod logging;
