@@ -72,7 +72,6 @@ pub async fn writer_task(mut rx: EventReceiver, file_prefix: &str) {
     }
 }
 
-/// Replay: Liest eine JSONL-Datei und gibt Events zurück
 pub fn replay_from_file(path: &str) -> Vec<MarketEvent> {
     use std::io::{BufRead, BufReader};
     use std::fs::File;
