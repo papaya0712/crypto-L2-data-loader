@@ -1,14 +1,14 @@
-
 [exchange]
 symbols = ["BTCUSDT"]
 
 [websocket]
-url = "wss://stream.bybit.com/v5/public/linear"
-ping_interval_secs = 30
+url = "wss://wbs-api.mexc.com/ws"
+ping_interval_secs = 15
+# nur "100ms" oder "10ms"
+depth_interval = "100ms"
 
 [logging]
-level = "info"
+level = "INFO"
 save_logs = true
 log_file_path = "logs/app.log"
-rewrite_last_logs = true
-
+rewrite_last_logs = false

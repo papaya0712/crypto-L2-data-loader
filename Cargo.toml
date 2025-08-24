@@ -1,21 +1,15 @@
 [package]
-name = "bybit_ws_test"
+name    = "mexc_depth_demo"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+tokio             = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
+reqwest           = { version = "0.12", default-features = false,features = ["json", "rustls-tls"] }
 
-config = "0.14"
-tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.27", features = ["native-tls"] }
-futures-util = "0.3"
-serde_json = "1"
-serde = { version = "1", features = ["derive"] }
-chrono = { version = "0.4", features = ["serde"] }
-clap = { version = "4.0", features = ["derive"] }
-tokio-util = "0.7"
-bytes = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
-anyhow = "1.0"
+serde             = { version = "1", features = ["derive"] }
+serde_json        = "1"
+ordered-float     = "4.2"
+anyhow            = "1"
+futures           = "0.3"
