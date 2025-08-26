@@ -1,21 +1,20 @@
 [package]
-name    = "mexc_depth_demo"
+name = "mexc-spot-public"
 version = "0.1.0"
 edition = "2021"
-build   = "build.rs"
 
 [dependencies]
-tokio             = { version = "1", features = ["full"] }
-tokio-tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
-reqwest           = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-serde             = { version = "1", features = ["derive"] }
-serde_json        = "1"
-ordered-float     = "4.2"
-anyhow            = "1"
-futures           = "0.3"
-prost             = "0.13"
-bytes             = "1"
+anyhow = "1"
+bytes = "1"
+futures = "0.3"
+ordered-float = "4"
+prost = "0.13"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 
 [build-dependencies]
-prost-build         = "0.13"
-protoc-bin-vendored = "3.2"
+prost-build = "0.13"
+protoc-bin-vendored = "3"
