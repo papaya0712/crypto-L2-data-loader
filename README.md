@@ -1,3 +1,3 @@
-# A Rust repository rebuild L2 orderbook from MEXC
+# A Rust repository for rebuilding L2 orderbook from MEXC
 
 ### currently in development 
