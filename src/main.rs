@@ -28,7 +28,7 @@ struct Snapshot {
 async fn main() -> Result<()> {
     let symbol = std::env::args().nth(1).unwrap_or_else(|| "BTCUSDT".to_string());
 
-    // Snapshot 1000 Level
+
     let mut asks: BookSide = BTreeMap::new();
     let mut bids: RevSide = BTreeMap::new();
     let mut snap_ver = reload_snapshot(&symbol, &mut asks, &mut bids).await?;
@@ -121,7 +121,6 @@ fn handle_diff_update(
         if from_v != prev + 1 { return Err(anyhow!("sequence gap")); }
     }
 
-    // Felder heißen asks / bids (nicht *_list)
     for it in delta.asks {
         let p = OrderedFloat(it.price.parse::<f64>()?);
         let q: f64 = it.quantity.parse()?;
