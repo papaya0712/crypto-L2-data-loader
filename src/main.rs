@@ -8,8 +8,7 @@ use std::{cmp::Reverse, collections::BTreeMap, time::Duration};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message as WsMsg};
 
 type BookSide = BTreeMap<OrderedFloat<f64>, f64>;
-type RevSide  = BTreeMap<Reverse<OrderedFloat<f64>>, f64>;
-
+type RevSide = BTreeMap<Reverse<OrderedFloat<f64>>, f64>;
 
 pub mod mexc_pb {
     include!(concat!(env!("OUT_DIR"), "/mexc.pb.rs"));
@@ -26,8 +25,9 @@ struct Snapshot {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let symbol = std::env::args().nth(1).unwrap_or_else(|| "BTCUSDT".to_string());
-
+    let symbol = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "BTCUSDT".to_string());
 
     let mut asks: BookSide = BTreeMap::new();
     let mut bids: RevSide = BTreeMap::new();
@@ -35,9 +35,17 @@ async fn main() -> Result<()> {
     println!("REST snapshot loaded (lastUpdateId={})", snap_ver);
     println!("levels: asks={} bids={}", asks.len(), bids.len());
 
-    // WS: aggre.depth @10ms
+    // Debug: print top 5 of snapshot
+    for (i, (k, q)) in asks.iter().take(5).enumerate() {
+        println!("SNAP ASK[{}] price={:.12} qty={:.8}", i, k.0, q);
+    }
+    for (i, (k, q)) in bids.iter().take(5).enumerate() {
+        println!("SNAP BID[{}] price={:.12} qty={:.8}", i, (k.0).0, q);
+    }
+
+    // 10ms or 100ms channel
     let (mut ws, _) = connect_async("wss://wbs-api.mexc.com/ws").await?;
-    let chan = format!("spot@public.aggre.depth.v3.api.pb@100ms@{symbol}");
+    let chan = format!("spot@public.aggre.depth.v3.api.pb@10ms@{symbol}");
     ws.send(WsMsg::Text(
         serde_json::json!({ "method": "SUBSCRIPTION", "params": [chan] }).to_string(),
     ))
@@ -108,7 +116,7 @@ fn handle_diff_update(
     let Body::PublicAggreDepths(delta) = body else { return Ok(()); };
 
     let from_v: u64 = delta.from_version.parse()?;
-    let to_v: u64   = delta.to_version.parse()?;
+    let to_v: u64 = delta.to_version.parse()?;
 
     if to_v < *snap_ver { return Ok(()); }
 
@@ -129,15 +137,23 @@ fn handle_diff_update(
         if q == 0.0 { bids.remove(&p); } else { bids.insert(p, q); }
     }
 
+    // Debug: print top 5 after applying this diff
+    for (i, (k, q)) in asks.iter().take(5).enumerate() {
+        println!("POST  ASK[{}] price={:.12} qty={:.8}", i, k.0, q);
+    }
+    for (i, (k, q)) in bids.iter().take(5).enumerate() {
+        println!("POST  BID[{}] price={:.12} qty={:.8}", i, (k.0).0, q);
+    }
+
     *snap_ver = to_v;
     *last_to_ver = Some(to_v);
 
     if let (Some((ask, _)), Some((bid, _))) = (asks.first_key_value(), bids.first_key_value()) {
-        if bid.0.0 <= ask.0 {
-            let spread = ask.0 - bid.0.0;
+        if bid.0 .0 <= ask.0 {
+            let spread = ask.0 - bid.0 .0;
             println!(
                 "bid {:>12.2} | ask {:>12.2} | spread {:>8.5} %",
-                bid.0.0, ask.0, spread / ask.0 * 100.0
+                bid.0 .0, ask.0, spread / ask.0 * 100.0
             );
         } else {
             eprintln!("crossed book (tick verworfen)");
