@@ -1,5 +1,5 @@
 // main.rs
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use bytes::Bytes;
 use futures::{SinkExt, StreamExt};
 use ordered_float::OrderedFloat;
@@ -7,28 +7,77 @@ use prost::Message;
 use std::{cmp::Reverse, collections::BTreeMap, time::Duration};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message as WsMsg};
 
-type BookSide = BTreeMap<OrderedFloat<f64>, f64>;          // asks ↑
-type RevSide  = BTreeMap<Reverse<OrderedFloat<f64>>, f64>; // bids ↓
+type BookSide = BTreeMap<OrderedFloat<f64>, f64>;
+type RevSide  = BTreeMap<Reverse<OrderedFloat<f64>>, f64>;
+
 
 pub mod mexc_pb {
     include!(concat!(env!("OUT_DIR"), "/mexc.pb.rs"));
 }
 use mexc_pb::PushDataV3ApiWrapper;
 
+#[derive(serde::Deserialize)]
+struct Snapshot {
+    #[serde(rename = "lastUpdateId")]
+    last_update_id: u64,
+    bids: Vec<[String; 2]>,
+    asks: Vec<[String; 2]>,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    #[derive(serde::Deserialize)]
-    struct Snapshot {
-        #[serde(rename = "lastUpdateId")]
-        last_update_id: u64,
-        bids: Vec<[String; 2]>,
-        asks: Vec<[String; 2]>,
-    }
-
     let symbol = std::env::args().nth(1).unwrap_or_else(|| "BTCUSDT".to_string());
-    let levels: usize = std::env::args().nth(2).and_then(|s| s.parse().ok()).unwrap_or(20);
 
-    // REST-Snapshot
+    // Snapshot 1000 Level
+    let mut asks: BookSide = BTreeMap::new();
+    let mut bids: RevSide = BTreeMap::new();
+    let mut snap_ver = reload_snapshot(&symbol, &mut asks, &mut bids).await?;
+    println!("REST snapshot loaded (lastUpdateId={})", snap_ver);
+    println!("levels: asks={} bids={}", asks.len(), bids.len());
+
+
+
+
+    // WS: aggre.depth @10ms
+    let (mut ws, _) = connect_async("wss://wbs-api.mexc.com/ws").await?;
+    let chan = format!("spot@public.aggre.depth.v3.api.pb@100ms@{symbol}");
+    ws.send(WsMsg::Text(
+        serde_json::json!({ "method": "SUBSCRIPTION", "params": [chan] }).to_string(),
+    ))
+    .await?;
+
+    let mut ping_tick = tokio::time::interval(Duration::from_secs(30));
+    let mut last_to_ver: Option<u64> = None;
+
+    loop {
+        tokio::select! {
+            _ = ping_tick.tick() => { let _ = ws.send(WsMsg::Ping(Vec::new())).await; }
+            msg = ws.next() => {
+                match msg {
+                    Some(Ok(WsMsg::Binary(buf))) => {
+                        match handle_diff_update(buf.into(), &mut asks, &mut bids, &mut snap_ver, &mut last_to_ver) {
+                            Ok(()) => {}
+                            Err(_) => {
+                                if let Ok(new_ver) = reload_snapshot(&symbol, &mut asks, &mut bids).await {
+                                    snap_ver = new_ver;
+                                    last_to_ver = None;
+                                    eprintln!("resynced via REST (lastUpdateId={})", snap_ver);
+                                }
+                            }
+                        }
+                    }
+                    Some(Ok(WsMsg::Ping(p))) => { let _ = ws.send(WsMsg::Pong(p)).await; }
+                    Some(Ok(WsMsg::Close(_))) | None => break,
+                    Some(Ok(_)) => {}
+                    Some(Err(e)) => { eprintln!("ws error: {e}"); break; }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn reload_snapshot(symbol: &str, asks: &mut BookSide, bids: &mut RevSide) -> Result<u64> {
     let snap: Snapshot = reqwest::get(format!(
         "https://api.mexc.com/api/v3/depth?symbol={symbol}&limit=1000"
     ))
@@ -37,82 +86,55 @@ async fn main() -> Result<()> {
     .json()
     .await?;
 
-    let mut asks: BookSide = BTreeMap::new();
+    asks.clear();
     for [p, q] in snap.asks {
         asks.insert(OrderedFloat(p.parse::<f64>()?), q.parse::<f64>()?);
     }
-    let mut bids: RevSide = BTreeMap::new();
+    bids.clear();
     for [p, q] in snap.bids {
         bids.insert(Reverse(OrderedFloat(p.parse::<f64>()?)), q.parse::<f64>()?);
     }
-    println!("REST snapshot loaded (lastUpdateId={})", snap.last_update_id);
-
-    // WS verbinden
-    let (mut ws, _) = connect_async("wss://wbs-api.mexc.com/ws").await?;
-    let chan = format!("spot@public.limit.depth.v3.api.pb@{symbol}@{levels}");
-    ws.send(WsMsg::Text(
-        serde_json::json!({ "method": "SUBSCRIPTION", "params": [chan] }).to_string(),
-    ))
-    .await?;
-
-    let mut ping_tick = tokio::time::interval(Duration::from_secs(30));
-    let mut last_ws_ver: Option<u64> = None;
-
-    loop {
-        tokio::select! {
-            _ = ping_tick.tick() => {
-                let _ = ws.send(WsMsg::Ping(Vec::new())).await; // kein chrono nötig
-            }
-            msg = ws.next() => {
-                match msg {
-                    Some(Ok(WsMsg::Binary(buf))) => {
-                        if let Err(e) = handle_snapshot_update(buf.into(), &mut asks, &mut bids, &mut last_ws_ver) {
-                            eprintln!("decode error: {e}");
-                        }
-                    }
-                    Some(Ok(WsMsg::Ping(p))) => { let _ = ws.send(WsMsg::Pong(p)).await; }
-                    Some(Ok(WsMsg::Close(_))) => break,
-                    Some(Ok(_)) => {}
-                    Some(Err(e)) => { eprintln!("ws error: {e}"); break; }
-                    None => break,
-                }
-            }
-        }
-    }
-    Ok(())
+    Ok(snap.last_update_id)
 }
 
-// Jede WS-Nachricht = kompletter Top-N-Snapshot → Seiten ersetzen
-fn handle_snapshot_update(
+fn handle_diff_update(
     buf: Bytes,
     asks: &mut BookSide,
     bids: &mut RevSide,
-    last_ws_ver: &mut Option<u64>,
+    snap_ver: &mut u64,
+    last_to_ver: &mut Option<u64>,
 ) -> Result<()> {
     use mexc_pb::push_data_v3_api_wrapper::Body;
 
     let wrapper = PushDataV3ApiWrapper::decode(buf)?;
     let Some(body) = wrapper.body else { return Ok(()); };
-    let Body::PublicLimitDepths(delta) = body else { return Ok(()); };
+    let Body::PublicAggreDepths(delta) = body else { return Ok(()); };
 
-    let ver: u64 = delta.version.parse()?;
-    if let Some(prev) = *last_ws_ver {
-        if ver <= prev { return Ok(()); }
-    }
-    *last_ws_ver = Some(ver);
+    let from_v: u64 = delta.from_version.parse()?;
+    let to_v: u64   = delta.to_version.parse()?;
 
-    asks.clear();
-    for item in delta.asks {
-        let p = OrderedFloat(item.price.parse::<f64>()?);
-        let q: f64 = item.quantity.parse()?;
-        if q != 0.0 { asks.insert(p, q); }
+    if to_v < *snap_ver { return Ok(()); }
+
+    if last_to_ver.is_none() {
+        if from_v > *snap_ver + 1 { return Err(anyhow!("gap after snapshot")); }
+    } else if let Some(prev) = *last_to_ver {
+        if from_v != prev + 1 { return Err(anyhow!("sequence gap")); }
     }
-    bids.clear();
-    for item in delta.bids {
-        let p = Reverse(OrderedFloat(item.price.parse::<f64>()?));
-        let q: f64 = item.quantity.parse()?;
-        if q != 0.0 { bids.insert(p, q); }
+
+    // Felder heißen asks / bids (nicht *_list)
+    for it in delta.asks {
+        let p = OrderedFloat(it.price.parse::<f64>()?);
+        let q: f64 = it.quantity.parse()?;
+        if q == 0.0 { asks.remove(&p); } else { asks.insert(p, q); }
     }
+    for it in delta.bids {
+        let p = Reverse(OrderedFloat(it.price.parse::<f64>()?));
+        let q: f64 = it.quantity.parse()?;
+        if q == 0.0 { bids.remove(&p); } else { bids.insert(p, q); }
+    }
+
+    *snap_ver = to_v;
+    *last_to_ver = Some(to_v);
 
     if let (Some((ask, _)), Some((bid, _))) = (asks.first_key_value(), bids.first_key_value()) {
         if bid.0.0 <= ask.0 {
