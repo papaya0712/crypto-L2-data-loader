@@ -35,9 +35,6 @@ async fn main() -> Result<()> {
     println!("REST snapshot loaded (lastUpdateId={})", snap_ver);
     println!("levels: asks={} bids={}", asks.len(), bids.len());
 
-
-
-
     // WS: aggre.depth @10ms
     let (mut ws, _) = connect_async("wss://wbs-api.mexc.com/ws").await?;
     let chan = format!("spot@public.aggre.depth.v3.api.pb@100ms@{symbol}");
