@@ -43,7 +43,6 @@ impl DataStore {
         Ok(enc)
     }
 
-    /// NDJSON-Event (JSON-Payload) in **eine** Datei anhängen.
     pub fn append_event_json<T: Serialize>(&self, symbol: &str, ts_ms: i64, kind: &str, payload: &T) -> Result<()> {
         let p = self.events_path(symbol, ts_ms);
         let mut enc = Self::open_zstd(p)?;
@@ -60,7 +59,6 @@ impl DataStore {
         Ok(())
     }
 
-    /// Rohpayload (Binary) Base64-kodiert in **eine** Datei anhängen.
     pub fn append_event_raw_b64(&self, symbol: &str, ts_ms: i64, kind: &str, raw: &[u8]) -> Result<()> {
         let p = self.events_path(symbol, ts_ms);
         let mut enc = Self::open_zstd(p)?;

@@ -24,5 +24,7 @@ logs
 .DS_Store
 Thumbs.db
 
+data/
+logs/
 .env
 env

@@ -47,7 +47,6 @@ async fn main() -> Result<()> {
     let mut asks: BookSide = BTreeMap::new();
     let mut bids: RevSide = BTreeMap::new();
 
-    // REST snapshot + persist (in eine Datei)
     let t0 = Instant::now();
     let mut snap_ver = reload_snapshot(&symbol, &mut asks, &mut bids).await?;
     let rtt_ms = t0.elapsed().as_millis() as u64;
@@ -70,11 +69,9 @@ async fn main() -> Result<()> {
     println!("REST snapshot loaded (lastUpdateId={})", snap_ver);
     println!("levels: asks={} bids={}", asks.len(), bids.len());
 
-    // Telemetry: clock skew sampler
     let telem_clone = telem.clone();
     tokio::spawn(clock_skew_task(telem_clone));
 
-    // Trades collector (optional)
     let store_tr = DataStore::new(&outdir)?;
     let symbol_tr = symbol.clone();
     tokio::spawn(async move {
@@ -83,7 +80,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Depth WS consumer
     depth_ws_loop(symbol, asks, bids, snap_ver, &store, telem).await?;
     Ok(())
 }
@@ -100,7 +96,7 @@ async fn clock_skew_task(_telem: Arc<Telemetry>) {
                             server_time_ms: server,
                             offset_ms: server - ts_local,
                         };
-                        // optional: persist as event if gewünscht
+                     
                     }
                 }
             }
@@ -144,12 +140,11 @@ async fn depth_ws_loop(
                     Some(Ok(WsMsg::Binary(buf))) => {
                         let recv_ts = epoch_ms();
 
-                        // Rohpayload in EINER Datei ablegen
+                      
                         let _ = store.append_event_raw_b64(&symbol, recv_ts, "depth_pb_raw", &buf);
 
                         match handle_diff_update(buf.into(), &mut asks, &mut bids, &mut snap_ver, &mut last_to_ver) {
                             Ok(()) => {
-                                // optional: strukturierte Top-50 als Event (ebenfalls in derselben Datei)
                                 let _ = store.append_event_json(&symbol, recv_ts, "depth_delta", &DepthDelta{
                                     symbol: symbol.clone(),
                                     ts_recv_ms: recv_ts,
@@ -173,7 +168,6 @@ async fn depth_ws_loop(
                                         *r += 1;
                                     }
                                     eprintln!("resynced via REST (lastUpdateId={})", snap_ver);
-                                    // optional: snapshot als Event persistieren
                                     let ts_now = epoch_ms();
                                     let _ = store.append_event_json(
                                         &symbol, ts_now, "depth_snapshot",
@@ -230,7 +224,6 @@ async fn reload_snapshot(symbol: &str, asks: &mut BookSide, bids: &mut RevSide) 
     Ok(snap.last_update_id)
 }
 
-// Sequenzlogik mit sanftem Fast-Forward
 fn handle_diff_update(
     buf: Bytes,
     asks: &mut BookSide,
@@ -287,13 +280,12 @@ fn handle_diff_update(
                 bid.0 .0, ask.0, spread / ask.0 * 100.0
             );
         } else {
-            eprintln!("crossed book (tick verworfen)");
+            eprintln!("crossed book");
         }
     }
     Ok(())
 }
 
-// ===== Trades via public /trades; robust bei null-IDs mit Dedup =====
 async fn trades_poller_rest(symbol: String, store: DataStore) -> Result<()> {
     #[derive(Deserialize)]
     struct RespTrade {
